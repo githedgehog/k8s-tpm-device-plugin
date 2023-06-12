@@ -1,0 +1,6 @@
+/cover.out
+/build/coverage/**
+!/build/coverage/.keepme
+/build/artifacts/**
+!/build/artifacts/.keepme
+/cmd/k8s-tpm-device-plugin/k8s-tpm-device-plugin

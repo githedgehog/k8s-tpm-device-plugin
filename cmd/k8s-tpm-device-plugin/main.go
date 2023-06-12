@@ -7,7 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/githedgehog/k8s-tpm-device-plugin/internal/plugin"
+	"go.githedgehog.com/k8s-tpm-device-plugin/internal/plugin"
+	"go.githedgehog.com/k8s-tpm-device-plugin/pkg/version"
 
 	"github.com/fsnotify/fsnotify"
 	"go.uber.org/zap"
@@ -17,10 +18,15 @@ import (
 
 func main() {
 	l := zap.Must(NewLogger(zapcore.DebugLevel, "console", true))
-	run(context.Background(), l)
+	if err := run(context.Background(), l); err != nil {
+		l.Panic("k8s-tpm-device-plugin failed", zap.Error(err))
+	}
 }
 
 func run(ctx context.Context, l *zap.Logger) error {
+	// print the version information
+	l.Info("Starting k8s-tpm-device-plugin", zap.String("version", version.Version))
+
 	// some of this code has been borrowed by the NVIDIA plugin: https://github.com/NVIDIA/k8s-device-plugin
 	// watch the kubelet for restarts, we do this like other plugins by looking for the kubelet socket to be recreated
 	// this means that we will have to restart our plugin.

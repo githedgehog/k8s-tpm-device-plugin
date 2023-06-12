@@ -1,4 +1,4 @@
-module github.com/githedgehog/k8s-tpm-device-plugin
+module go.githedgehog.com/k8s-tpm-device-plugin
 
 go 1.20
 

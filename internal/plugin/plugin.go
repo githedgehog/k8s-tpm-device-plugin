@@ -35,6 +35,7 @@ type tpmDevicePlugin struct {
 	l          *zap.Logger
 	socketPath string
 	server     *grpc.Server
+	stopCh     chan struct{}
 }
 
 var _ Interface = &tpmDevicePlugin{}
@@ -42,6 +43,7 @@ var _ pluginapi.DevicePluginServer = &tpmDevicePlugin{}
 
 func NewTPMDevicePlugin(l *zap.Logger) (Interface, error) {
 	return &tpmDevicePlugin{
+		l:          l,
 		socketPath: filepath.Join(pluginapi.DevicePluginPath, socketName),
 		// will be initialized by Start()
 		server: nil,
@@ -50,10 +52,13 @@ func NewTPMDevicePlugin(l *zap.Logger) (Interface, error) {
 
 func (p *tpmDevicePlugin) init() {
 	p.server = grpc.NewServer()
+	p.stopCh = make(chan struct{})
 }
 
 func (p *tpmDevicePlugin) cleanup() {
+	close(p.stopCh)
 	p.server = nil
+	p.stopCh = nil
 }
 
 // Start implements Interface
@@ -67,9 +72,11 @@ func (p *tpmDevicePlugin) Start(ctx context.Context) error {
 	if err := p.Serve(ctx); err != nil {
 		return err
 	}
+	p.l.Info("TPM Device Plugin server started")
 	if err := p.Register(ctx); err != nil {
 		return err
 	}
+	p.l.Info("TPM Device Plugin registered with kubelet")
 
 	return nil
 }
@@ -122,7 +129,7 @@ func (p *tpmDevicePlugin) Serve(ctx context.Context) error {
 	// connect to the gRPC server in blocking mode to ensure it is up before we return here
 	subCtx, cancel := context.WithTimeout(ctx, connectionTimeout)
 	defer cancel()
-	conn, err := grpc.DialContext(subCtx, p.socketPath, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.DialContext(subCtx, "unix:"+p.socketPath, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		return fmt.Errorf("gRPC server did not start within timeout %v: %w", connectionTimeout, err)
 	}
@@ -136,7 +143,7 @@ func (p *tpmDevicePlugin) Register(ctx context.Context) error {
 	// connect to kubelet socket
 	connCtx, connCancel := context.WithTimeout(ctx, connectionTimeout)
 	defer connCancel()
-	conn, err := grpc.DialContext(connCtx, pluginapi.KubeletSocket, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.DialContext(connCtx, "unix:"+pluginapi.KubeletSocket, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		return fmt.Errorf("connecting to kubelet socket at %s: %w", pluginapi.KubeletSocket, err)
 	}
@@ -199,12 +206,17 @@ func (p *tpmDevicePlugin) GetPreferredAllocation(_ context.Context, _ *pluginapi
 
 // ListAndWatch implements v1beta1.DevicePluginServer
 func (p *tpmDevicePlugin) ListAndWatch(_ *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	return s.Send(&pluginapi.ListAndWatchResponse{Devices: []*pluginapi.Device{
+	s.Send(&pluginapi.ListAndWatchResponse{Devices: []*pluginapi.Device{
 		{
 			ID:     tpmrmID,
 			Health: pluginapi.Healthy,
 		},
 	}})
+
+	// TODO: there is nothing we are doing at the moment to check if the TPM is healthy or not
+	<-p.stopCh
+
+	return nil
 }
 
 // PreStartContainer implements v1beta1.DevicePluginServer
