@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -16,13 +17,19 @@ import (
 )
 
 const (
+	tpmrmID    = "tpmrm0"
 	socketName = "tpm.sock"
 )
 
 var (
 	connectionTimeout = time.Second * 5
 	registerTimeout   = time.Second * 30
+	errUnimplmented   = errors.New("plugin does not implement this method")
 )
+
+func UnimplementedError(str string) error {
+	return fmt.Errorf("%w: %s", errUnimplmented, str)
+}
 
 type tpmDevicePlugin struct {
 	l          *zap.Logger
@@ -154,26 +161,54 @@ func (p *tpmDevicePlugin) Register(ctx context.Context) error {
 }
 
 // Allocate implements v1beta1.DevicePluginServer
-func (*tpmDevicePlugin) Allocate(context.Context, *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
-	panic("unimplemented")
+func (p *tpmDevicePlugin) Allocate(_ context.Context, allocateRequest *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
+	p.l.Debug("Allocate() call", zap.Reflect("allocateRequest", allocateRequest))
+	resp := &pluginapi.AllocateResponse{}
+	for _, req := range allocateRequest.ContainerRequests {
+		p.l.Debug("allocate ContainerRequest", zap.Reflect("creq", req))
+		cresp := &pluginapi.ContainerAllocateResponse{
+			Devices: []*pluginapi.DeviceSpec{
+				{
+					ContainerPath: "/dev/tpmrm0",
+					HostPath:      "/dev/tpmrm0",
+					Permissions:   "rwm",
+				},
+			},
+		}
+		resp.ContainerResponses = append(resp.ContainerResponses, cresp)
+	}
+	return resp, nil
 }
 
 // GetDevicePluginOptions implements v1beta1.DevicePluginServer
 func (*tpmDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
-	panic("unimplemented")
+	return &pluginapi.DevicePluginOptions{
+		PreStartRequired:                false,
+		GetPreferredAllocationAvailable: false,
+	}, nil
 }
 
 // GetPreferredAllocation implements v1beta1.DevicePluginServer
-func (*tpmDevicePlugin) GetPreferredAllocation(context.Context, *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
-	panic("unimplemented")
+func (p *tpmDevicePlugin) GetPreferredAllocation(_ context.Context, _ *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
+	p.l.Debug("GetPreferredAllocation() is unimplemented for this plugin")
+	// for _, req := range preferredAllocationRequest.ContainerRequests {
+	// 	req.
+	// }
+	return nil, UnimplementedError("GetPreferredAllocation")
 }
 
 // ListAndWatch implements v1beta1.DevicePluginServer
-func (*tpmDevicePlugin) ListAndWatch(*pluginapi.Empty, pluginapi.DevicePlugin_ListAndWatchServer) error {
-	panic("unimplemented")
+func (p *tpmDevicePlugin) ListAndWatch(_ *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
+	return s.Send(&pluginapi.ListAndWatchResponse{Devices: []*pluginapi.Device{
+		{
+			ID:     tpmrmID,
+			Health: pluginapi.Healthy,
+		},
+	}})
 }
 
 // PreStartContainer implements v1beta1.DevicePluginServer
-func (*tpmDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
-	panic("unimplemented")
+func (p *tpmDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
+	p.l.Debug("PreStartContainer() is unimplemented for this plugin")
+	return &pluginapi.PreStartContainerResponse{}, nil
 }
