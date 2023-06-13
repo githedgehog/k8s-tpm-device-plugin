@@ -38,6 +38,29 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            {{- if .Values.pluginSettings }}
+            {{- if .Values.pluginSettings.logLevel }}
+            - name: "LOG_LEVEL"
+              value: "{{ .Values.pluginSettings.logLevel }}"
+            {{- end }}
+            {{- if .Values.pluginSettings.logFormat }}
+            - name: "LOG_FORMAT"
+              value: "{{ .Values.pluginSettings.logFormat }}"
+            {{- end }}
+            {{- if .Values.pluginSettings.logDevelopment }}
+            - name: "LOG_DEVELOPMENT"
+              value: "{{ .Values.pluginSettings.logDevelopment }}"
+            {{- end }}
+            {{- if .Values.pluginSettings.numTpmRmDevices }}
+            - name: "NUM_TPMRM_DEVICES"
+              value: {{ .Values.pluginSettings.numTpmRmDevices }}
+            {{- end }}
+            {{- if .Values.pluginSettings.passTpm2toolsTctiEnvVar }}
+            - name: "PASS_TPM2TOOLS_TCTI_ENV_VAR"
+              value: {{ .Values.pluginSettings.passTpm2toolsTctiEnvVar }}
+            {{- end }}
+            {{- end }}
           volumeMounts:
             - name: device-plugins
               mountPath: /var/lib/kubelet/device-plugins

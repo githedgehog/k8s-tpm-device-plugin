@@ -61,29 +61,34 @@ func main() {
 		Version:     version.Version,
 		Flags: []cli.Flag{
 			&cli.GenericFlag{
-				Name:  "log-level",
-				Usage: "minimum log level to log at",
-				Value: &defaultLogLevel,
+				Name:    "log-level",
+				Usage:   "minimum log level to log at",
+				Value:   &defaultLogLevel,
+				EnvVars: []string{"LOG_LEVEL"},
 			},
 			&cli.StringFlag{
-				Name:  "log-format",
-				Usage: "log format to use: json or console",
-				Value: "json",
+				Name:    "log-format",
+				Usage:   "log format to use: json or console",
+				Value:   "json",
+				EnvVars: []string{"LOG_FORMAT"},
 			},
 			&cli.BoolFlag{
-				Name:  "log-development",
-				Usage: "enables development log settings",
-				Value: false,
+				Name:    "log-development",
+				Usage:   "enables development log settings",
+				Value:   false,
+				EnvVars: []string{"LOG_DEVELOPMENT"},
 			},
 			&cli.UintFlag{
-				Name:  "num-tpmrm-devices",
-				Usage: "number of artificial /dev/tpmrm0 devices to communicate to the kubelet",
-				Value: 64, // yes, I totally randomly made up that number
+				Name:    "num-tpmrm-devices",
+				Usage:   "number of artificial /dev/tpmrm0 devices to communicate to the kubelet",
+				Value:   64, // yes, I totally randomly made up that number
+				EnvVars: []string{"NUM_TPMRM_DEVICES"},
 			},
 			&cli.BoolFlag{
-				Name:  "pass-tpm2tools-tcti-env-var",
-				Usage: "passes a TPM2TOOLS_TCTI environment variable to the injected pods which points to the device",
-				Value: false,
+				Name:    "pass-tpm2tools-tcti-env-var",
+				Usage:   "passes a TPM2TOOLS_TCTI environment variable to the injected pods which points to the device",
+				Value:   false,
+				EnvVars: []string{"PASS_TPM2TOOLS_TCTI_ENV_VAR"},
 			},
 		},
 		Action: func(ctx *cli.Context) error {
