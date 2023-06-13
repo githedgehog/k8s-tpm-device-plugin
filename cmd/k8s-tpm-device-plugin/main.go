@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"go.githedgehog.com/k8s-tpm-device-plugin/internal/plugin"
+	"go.githedgehog.com/k8s-tpm-device-plugin/internal/plugin/tpmrm"
 	"go.githedgehog.com/k8s-tpm-device-plugin/pkg/version"
 
 	"github.com/fsnotify/fsnotify"
@@ -137,7 +138,7 @@ func run(cliCtx *cli.Context, l *zap.Logger) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	p, err := plugin.NewTPMRmDevicePlugin(l)
+	p, err := tpmrm.New(l, cliCtx.Uint("num-tpmrm-devices"), cliCtx.Bool("pass-tpm2tools-tcti-env-var"))
 	if err != nil {
 		return fmt.Errorf("TPM Device plugin create: %w", err)
 	}

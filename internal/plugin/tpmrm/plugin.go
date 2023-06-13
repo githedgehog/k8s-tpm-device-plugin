@@ -1,4 +1,4 @@
-package plugin
+package tpmrm
 
 import (
 	"context"
@@ -12,6 +12,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"go.githedgehog.com/k8s-tpm-device-plugin/internal/plugin"
 
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
@@ -33,17 +35,21 @@ func UnimplementedError(str string) error {
 
 type tpmrmDevicePlugin struct {
 	l          *zap.Logger
+	numDevices uint
+	tctiEnvVar bool
 	socketPath string
 	server     *grpc.Server
 	stopCh     chan struct{}
 }
 
-var _ Interface = &tpmrmDevicePlugin{}
+var _ plugin.Interface = &tpmrmDevicePlugin{}
 var _ pluginapi.DevicePluginServer = &tpmrmDevicePlugin{}
 
-func NewTPMRmDevicePlugin(l *zap.Logger) (Interface, error) {
+func New(l *zap.Logger, numDevices uint, tctiEnvVar bool) (plugin.Interface, error) {
 	return &tpmrmDevicePlugin{
 		l:          l,
+		numDevices: numDevices,
+		tctiEnvVar: tctiEnvVar,
 		socketPath: filepath.Join(pluginapi.DevicePluginPath, tpmrmSocketName),
 		// will be initialized by Start()
 		server: nil,
@@ -173,10 +179,14 @@ func (p *tpmrmDevicePlugin) Allocate(_ context.Context, allocateRequest *plugina
 	resp := &pluginapi.AllocateResponse{}
 	for _, req := range allocateRequest.ContainerRequests {
 		p.l.Debug("allocate ContainerRequest", zap.Reflect("creq", req))
-		cresp := &pluginapi.ContainerAllocateResponse{
-			Envs: map[string]string{
+		var envs map[string]string
+		if p.tctiEnvVar {
+			envs = map[string]string{
 				"TPM2TOOLS_TCTI": "device:/dev/tpmrm0",
-			},
+			}
+		}
+		cresp := &pluginapi.ContainerAllocateResponse{
+			Envs: envs,
 			Devices: []*pluginapi.DeviceSpec{
 				{
 					ContainerPath: "/dev/tpmrm0",
@@ -209,17 +219,23 @@ func (p *tpmrmDevicePlugin) GetPreferredAllocation(_ context.Context, _ *plugina
 
 // ListAndWatch implements v1beta1.DevicePluginServer
 func (p *tpmrmDevicePlugin) ListAndWatch(_ *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	s.Send(&pluginapi.ListAndWatchResponse{Devices: []*pluginapi.Device{
-		{
-			ID:     tpmrmID,
-			Health: pluginapi.Healthy,
-		},
-	}})
+	s.Send(&pluginapi.ListAndWatchResponse{Devices: generateDeviceIDs(p.numDevices)})
 
 	// TODO: there is nothing we are doing at the moment to check if the TPM is healthy or not
 	<-p.stopCh
 
 	return nil
+}
+
+func generateDeviceIDs(num uint) []*pluginapi.Device {
+	ret := make([]*pluginapi.Device, 0, num)
+	for i := uint(0); i < num; i++ {
+		ret = append(ret, &pluginapi.Device{
+			ID:     fmt.Sprintf("%s-%d", tpmrmID, i),
+			Health: pluginapi.Healthy,
+		})
+	}
+	return ret
 }
 
 // PreStartContainer implements v1beta1.DevicePluginServer
