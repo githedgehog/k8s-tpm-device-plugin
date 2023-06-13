@@ -93,7 +93,7 @@ test-cover: ## Runs golang unit tests and generates code coverage information
 .PHONY: docker-build
 docker-build: ## Builds the application in a docker container and creates a docker image
 	docker buildx build \
-		-f $(MKFILE_DIR)/docker/Dockerfile \
+		-f $(MKFILE_DIR)/build/docker/k8s-tpm-device-plugin/Dockerfile \
 		-t $(DOCKER_TAG) \
 		--progress=plain \
 		--build-arg APPVERSION=$(VERSION) \
