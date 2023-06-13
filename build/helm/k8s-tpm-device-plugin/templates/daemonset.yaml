@@ -54,11 +54,11 @@ spec:
             {{- end }}
             {{- if .Values.pluginSettings.numTpmRmDevices }}
             - name: "NUM_TPMRM_DEVICES"
-              value: {{ .Values.pluginSettings.numTpmRmDevices }}
+              value: "{{ .Values.pluginSettings.numTpmRmDevices }}"
             {{- end }}
             {{- if .Values.pluginSettings.passTpm2toolsTctiEnvVar }}
             - name: "PASS_TPM2TOOLS_TCTI_ENV_VAR"
-              value: {{ .Values.pluginSettings.passTpm2toolsTctiEnvVar }}
+              value: "{{ .Values.pluginSettings.passTpm2toolsTctiEnvVar }}"
             {{- end }}
             {{- end }}
           volumeMounts:
