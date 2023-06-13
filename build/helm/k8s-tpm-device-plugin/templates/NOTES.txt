@@ -38,7 +38,7 @@ access to the TPM:
 ```bash
 kubectl exec -ti tpm-device-test -- /bin/bash
 
-dnf install -y --no-install-recommends tpm2-tools
+dnf install -y tpm2-tools
 tpm2_getcap --list
 tpm2_getrandom --hex 16
 ```
