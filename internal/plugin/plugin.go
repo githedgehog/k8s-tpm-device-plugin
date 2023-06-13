@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	tpmrmID    = "tpmrm0"
-	socketName = "tpm.sock"
+	tpmrmID         = "tpmrm0"
+	tpmrmSocketName = "hh-tpmrm.sock"
 )
 
 var (
@@ -31,38 +31,38 @@ func UnimplementedError(str string) error {
 	return fmt.Errorf("%w: %s", errUnimplmented, str)
 }
 
-type tpmDevicePlugin struct {
+type tpmrmDevicePlugin struct {
 	l          *zap.Logger
 	socketPath string
 	server     *grpc.Server
 	stopCh     chan struct{}
 }
 
-var _ Interface = &tpmDevicePlugin{}
-var _ pluginapi.DevicePluginServer = &tpmDevicePlugin{}
+var _ Interface = &tpmrmDevicePlugin{}
+var _ pluginapi.DevicePluginServer = &tpmrmDevicePlugin{}
 
-func NewTPMDevicePlugin(l *zap.Logger) (Interface, error) {
-	return &tpmDevicePlugin{
+func NewTPMRmDevicePlugin(l *zap.Logger) (Interface, error) {
+	return &tpmrmDevicePlugin{
 		l:          l,
-		socketPath: filepath.Join(pluginapi.DevicePluginPath, socketName),
+		socketPath: filepath.Join(pluginapi.DevicePluginPath, tpmrmSocketName),
 		// will be initialized by Start()
 		server: nil,
 	}, nil
 }
 
-func (p *tpmDevicePlugin) init() {
+func (p *tpmrmDevicePlugin) init() {
 	p.server = grpc.NewServer()
 	p.stopCh = make(chan struct{})
 }
 
-func (p *tpmDevicePlugin) cleanup() {
+func (p *tpmrmDevicePlugin) cleanup() {
 	close(p.stopCh)
 	p.server = nil
 	p.stopCh = nil
 }
 
 // Start implements Interface
-func (p *tpmDevicePlugin) Start(ctx context.Context) error {
+func (p *tpmrmDevicePlugin) Start(ctx context.Context) error {
 	// caller safeguard
 	if p == nil {
 		return nil
@@ -82,7 +82,7 @@ func (p *tpmDevicePlugin) Start(ctx context.Context) error {
 }
 
 // Stop implements Interface
-func (p *tpmDevicePlugin) Stop(context.Context) error {
+func (p *tpmrmDevicePlugin) Stop(context.Context) error {
 	// caller safeguard
 	if p == nil || p.server == nil {
 		return nil
@@ -96,7 +96,7 @@ func (p *tpmDevicePlugin) Stop(context.Context) error {
 	return nil
 }
 
-func (p *tpmDevicePlugin) Serve(ctx context.Context) error {
+func (p *tpmrmDevicePlugin) Serve(ctx context.Context) error {
 	// listen on unix socket
 	// NOTE: no need to close the listener as the gRPC methods close the listener automatically
 	if err := os.Remove(p.socketPath); err != nil && !os.IsNotExist(err) {
@@ -139,7 +139,7 @@ func (p *tpmDevicePlugin) Serve(ctx context.Context) error {
 	return nil
 }
 
-func (p *tpmDevicePlugin) Register(ctx context.Context) error {
+func (p *tpmrmDevicePlugin) Register(ctx context.Context) error {
 	// connect to kubelet socket
 	connCtx, connCancel := context.WithTimeout(ctx, connectionTimeout)
 	defer connCancel()
@@ -154,7 +154,7 @@ func (p *tpmDevicePlugin) Register(ctx context.Context) error {
 	defer regCancel()
 	if _, err := client.Register(regCtx, &pluginapi.RegisterRequest{
 		Version:      pluginapi.Version,
-		Endpoint:     socketName,
+		Endpoint:     tpmrmSocketName,
 		ResourceName: "githedgehog.com/tpmrm",
 		Options: &pluginapi.DevicePluginOptions{
 			PreStartRequired:                false,
@@ -168,7 +168,7 @@ func (p *tpmDevicePlugin) Register(ctx context.Context) error {
 }
 
 // Allocate implements v1beta1.DevicePluginServer
-func (p *tpmDevicePlugin) Allocate(_ context.Context, allocateRequest *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
+func (p *tpmrmDevicePlugin) Allocate(_ context.Context, allocateRequest *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	p.l.Debug("Allocate() call", zap.Reflect("allocateRequest", allocateRequest))
 	resp := &pluginapi.AllocateResponse{}
 	for _, req := range allocateRequest.ContainerRequests {
@@ -188,7 +188,7 @@ func (p *tpmDevicePlugin) Allocate(_ context.Context, allocateRequest *pluginapi
 }
 
 // GetDevicePluginOptions implements v1beta1.DevicePluginServer
-func (*tpmDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
+func (*tpmrmDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
 	return &pluginapi.DevicePluginOptions{
 		PreStartRequired:                false,
 		GetPreferredAllocationAvailable: false,
@@ -196,7 +196,7 @@ func (*tpmDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty
 }
 
 // GetPreferredAllocation implements v1beta1.DevicePluginServer
-func (p *tpmDevicePlugin) GetPreferredAllocation(_ context.Context, _ *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
+func (p *tpmrmDevicePlugin) GetPreferredAllocation(_ context.Context, _ *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
 	p.l.Debug("GetPreferredAllocation() is unimplemented for this plugin")
 	// for _, req := range preferredAllocationRequest.ContainerRequests {
 	// 	req.
@@ -205,7 +205,7 @@ func (p *tpmDevicePlugin) GetPreferredAllocation(_ context.Context, _ *pluginapi
 }
 
 // ListAndWatch implements v1beta1.DevicePluginServer
-func (p *tpmDevicePlugin) ListAndWatch(_ *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
+func (p *tpmrmDevicePlugin) ListAndWatch(_ *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	s.Send(&pluginapi.ListAndWatchResponse{Devices: []*pluginapi.Device{
 		{
 			ID:     tpmrmID,
@@ -220,7 +220,7 @@ func (p *tpmDevicePlugin) ListAndWatch(_ *pluginapi.Empty, s pluginapi.DevicePlu
 }
 
 // PreStartContainer implements v1beta1.DevicePluginServer
-func (p *tpmDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
+func (p *tpmrmDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
 	p.l.Debug("PreStartContainer() is unimplemented for this plugin")
 	return &pluginapi.PreStartContainerResponse{}, nil
 }

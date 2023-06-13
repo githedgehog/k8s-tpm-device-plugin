@@ -43,7 +43,7 @@ func run(ctx context.Context, l *zap.Logger) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	p, err := plugin.NewTPMDevicePlugin(l)
+	p, err := plugin.NewTPMRmDevicePlugin(l)
 	if err != nil {
 		return fmt.Errorf("TPM Device plugin create: %w", err)
 	}
