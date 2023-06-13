@@ -22,3 +22,27 @@ version: 0.1.0
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
 appVersion: "1.16.0"
+
+# The device manager is only GA and default since Kubernetes 1.26
+# NOTE: the notation below includes "pre-release" versions. This is done for multiple reasons:
+# - some Kubernetes vendored versions are not using "proper" SemVer 2, and are using
+#   pre-release version strings instead of build-version strings
+# - any pre-release version will have the support already anyways, so it is a safe notation
+# For details see: https://github.com/Masterminds/semver#working-with-prerelease-versions
+kubeVersion: ">= 1.26.0-0"
+
+# The list of all current maintainers of this project
+maintainers:
+- name: Marcus Heese
+  email: marcus@githedgehog.com
+  url: https://github.com/mheese
+
+# This should simply link to the github repository
+home: https://github.com/githedgehog/k8s-tpm-device-plugin
+
+# some company stuff :) - our logo is also just pretty
+icon: https://githedgehog.com/wp-content/uploads/2023/01/HEDGEHOG-Icon-Color.png
+
+# The sources for the TPM device plugin are on github
+sources:
+- https://github.com/githedgehog/k8s-tpm-device-plugin
