@@ -12,12 +12,20 @@ SRC_FILES := $(shell find $(MKFILE_DIR)/cmd -type f -name "*.go")
 SRC_FILES += $(shell find $(MKFILE_DIR)/internal -type f -name "*.go")
 SRC_FILES += $(shell find $(MKFILE_DIR)/pkg -type f -name "*.go")
 
-VERSION ?= $(shell git describe --tags --long --always)
+# golang requires for modules that their tags have the 'v' prefixed which is not semver 2 compliant
+# however, the rest of a 'git describe --tags' output is, so this does the trick for us internally
+VERSION ?= $(shell git describe --tags)
 
 DOCKER_BUILDX_FLAGS ?=
 #DOCKER_PLATFORMS ?= linux/amd64,linux/arm64
 DOCKER_PLATFORMS ?= linux/amd64
-DOCKER_TAG ?= ghcr.io/githedgehog/k8s-tpm-device-plugin:latest
+DOCKER_TAG ?= ghcr.io/githedgehog/k8s-tpm-device-plugin:$(VERSION)
+
+# helm chart version must be semver 2 compliant
+HELM_CHART_VERSION ?= $(shell echo $(VERSION) | sed 's/^v//')
+HELM_CHART_DIR := $(BUILD_DIR)/helm/k8s-tpm-device-plugin
+HELM_CHART_FILES := $(shell find $(HELM_CHART_DIR) -type f)
+HELM_CHART_TAG ?= ghcr.io/githedgehog/k8s-tpm-device-plugin/helm:$(HELM_CHART_VERSION)
 
 ##@ General
 
@@ -42,7 +50,7 @@ all: build
 
 build: k8s-tpm-device-plugin ## Builds the k8s-tpm-device-plugin for amd64 and arm64 architectures
 
-clean: k8s-tpm-device-plugin-clean ## Cleans the k8s-tpm-device-plugin builds
+clean: k8s-tpm-device-plugin-clean helm-clean ## Cleans the k8s-tpm-device-plugin builds as well as helm
 
 k8s-tpm-device-plugin: $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-amd64 $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-arm64
 
@@ -94,3 +102,17 @@ docker-build: ## Builds the application in a docker container and creates a dock
 		--build-arg GPG_PUBKEY=$(GPG_PUBKEY) \
 		--platform=$(DOCKER_PLATFORMS) $(DOCKER_BUILDX_FLAGS) \
 		. 2>&1
+
+helm: $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz ## Builds a helm chart
+
+$(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz: $(HELM_CHART_FILES)
+	helm lint $(HELM_CHART_DIR)
+	helm package $(HELM_CHART_DIR) --version $(HELM_CHART_VERSION) --app-version $(VERSION) -d $(BUILD_ARTIFACTS_DIR)
+
+.PHONY: helm-clean
+helm-clean: ## Cleans the packaged helm chart
+        rm -v $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz || true
+
+.PHONY: helm-push
+helm-push: helm ## Builds AND pushes the helm chart
+        helm push $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz oci://$(HELM_CHART_TAG)

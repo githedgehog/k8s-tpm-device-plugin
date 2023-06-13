@@ -1,0 +1,44 @@
+The purpose of this device plugin is that you can request access to the TPM
+device of the host without the need for privileged access of pods.
+
+You can request a TPM device by requesting it through pod limits of 1 like the
+following: `githedgehog.com/tpmrm: 1`.
+This makes the /dev/tpmrm0 device available inside of a pod.
+
+Here is an example Fedora pod in YAML definition which requests a TPM device
+through this plugin:
+
+```
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tpm-device-test
+spec:
+  terminationGracePeriodSeconds: 1
+  containers:
+  - name: tpm-device-test
+    image: fedora:latest
+    command:
+    - /bin/bash
+    - -c
+    - while true; do sleep 3600; done
+    resources:
+      limits:
+        githedgehog.com/tpmrm: 1
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+```
+
+Once you shell into this pod, you can run the following commands to test
+access to the TPM:
+
+```
+kubectl exec -ti tpm-device-test -- /bin/bash
+
+dnf install -y --no-install-recommends tpm2-tools
+tpm2_getcap --list
+tpm2_getrandom --hex 16
+```
