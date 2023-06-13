@@ -25,7 +25,7 @@ DOCKER_TAG ?= ghcr.io/githedgehog/k8s-tpm-device-plugin:$(VERSION)
 HELM_CHART_VERSION ?= $(shell echo $(VERSION) | sed 's/^v//')
 HELM_CHART_DIR := $(BUILD_DIR)/helm/k8s-tpm-device-plugin
 HELM_CHART_FILES := $(shell find $(HELM_CHART_DIR) -type f)
-HELM_CHART_TAG ?= ghcr.io/githedgehog/k8s-tpm-device-plugin/helm:$(HELM_CHART_VERSION)
+HELM_CHART_REPO ?= ghcr.io/githedgehog/k8s-tpm-device-plugin/helm-charts
 
 ##@ General
 
@@ -115,4 +115,4 @@ helm-clean: ## Cleans the packaged helm chart
 
 .PHONY: helm-push
 helm-push: helm ## Builds AND pushes the helm chart
-	helm push $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz oci://$(HELM_CHART_TAG)
+	helm push $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz oci://$(HELM_CHART_REPO)
