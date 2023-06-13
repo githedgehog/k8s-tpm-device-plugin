@@ -13,8 +13,8 @@ SRC_FILES += $(shell find $(MKFILE_DIR)/internal -type f -name "*.go")
 SRC_FILES += $(shell find $(MKFILE_DIR)/pkg -type f -name "*.go")
 
 # golang requires for modules that their tags have the 'v' prefixed which is not semver 2 compliant
-# however, the rest of a 'git describe --tags' output is, so this does the trick for us internally
-VERSION ?= $(shell git describe --tags)
+# however, the rest of a 'git describe --tags --dirty' output is, so this does the trick for us internally
+VERSION ?= $(shell git describe --tags --dirty)
 
 DOCKER_BUILDX_FLAGS ?=
 #DOCKER_PLATFORMS ?= linux/amd64,linux/arm64
@@ -111,8 +111,8 @@ $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz: $(HELM_C
 
 .PHONY: helm-clean
 helm-clean: ## Cleans the packaged helm chart
-        rm -v $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz || true
+	rm -v $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz  2>/dev/null || true
 
 .PHONY: helm-push
 helm-push: helm ## Builds AND pushes the helm chart
-        helm push $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz oci://$(HELM_CHART_TAG)
+	helm push $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz oci://$(HELM_CHART_TAG)

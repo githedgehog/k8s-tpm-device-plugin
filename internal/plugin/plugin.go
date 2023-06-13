@@ -174,6 +174,9 @@ func (p *tpmrmDevicePlugin) Allocate(_ context.Context, allocateRequest *plugina
 	for _, req := range allocateRequest.ContainerRequests {
 		p.l.Debug("allocate ContainerRequest", zap.Reflect("creq", req))
 		cresp := &pluginapi.ContainerAllocateResponse{
+			Envs: map[string]string{
+				"TPM2TOOLS_TCTI": "device:/dev/tpmrm0",
+			},
 			Devices: []*pluginapi.DeviceSpec{
 				{
 					ContainerPath: "/dev/tpmrm0",

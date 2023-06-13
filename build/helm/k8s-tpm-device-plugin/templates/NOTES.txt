@@ -8,7 +8,7 @@ This makes the /dev/tpmrm0 device available inside of a pod.
 Here is an example Fedora pod in YAML definition which requests a TPM device
 through this plugin:
 
-```
+```yaml
 ---
 apiVersion: v1
 kind: Pod
@@ -35,7 +35,7 @@ spec:
 Once you shell into this pod, you can run the following commands to test
 access to the TPM:
 
-```
+```bash
 kubectl exec -ti tpm-device-test -- /bin/bash
 
 dnf install -y --no-install-recommends tpm2-tools
