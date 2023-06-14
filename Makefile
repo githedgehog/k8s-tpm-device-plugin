@@ -103,6 +103,10 @@ docker-build: ## Builds the application in a docker container and creates a dock
 		--platform=$(DOCKER_PLATFORMS) $(DOCKER_BUILDX_FLAGS) \
 		. 2>&1
 
+.PHONY: docker-push
+docker-push: ## Pushes a previously built docker container
+	docker push $(DOCKER_TAG)
+
 helm: $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz ## Builds a helm chart
 
 $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz: $(HELM_CHART_FILES)
@@ -111,7 +115,7 @@ $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz: $(HELM_C
 
 .PHONY: helm-clean
 helm-clean: ## Cleans the packaged helm chart
-	rm -v $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz  2>/dev/null || true
+	rm -v $(BUILD_ARTIFACTS_DIR)/k8s-tpm-device-plugin-$(HELM_CHART_VERSION).tgz 2>/dev/null || true
 
 .PHONY: helm-push
 helm-push: helm ## Builds AND pushes the helm chart

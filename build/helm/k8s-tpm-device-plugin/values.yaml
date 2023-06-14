@@ -2,6 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# One can override all command-line flags with the settings here
+# NOTE: the values do not have to be set, if they are not, the
+# hard-coded defaults of the application are being taken
 pluginSettings:
   # log settings
   # set to "debug" if you need more output
@@ -10,11 +13,9 @@ pluginSettings:
   logFormat: "json"
   # as the name suggests, only useful for a developer of the plugin
   logDevelopment: "false"
-  
   # the number of virtual /dev/tpmrm0 to create that the kubelet
   # uses during scheduling
   numTpmRmDevices: "64"
-
   # if true, will inject the TPM2TOOLS_TCTI environment variable
   # with the correct setting to use the passed through device.
   # NOTE: as this is auto-detected anyways, this is not really useful.
