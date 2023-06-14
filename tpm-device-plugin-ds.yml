@@ -1,3 +1,19 @@
+# Copyright 2023 Hedgehog SONiC Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+# 	http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# An initial version of the DaemonSet. Leaving it for an overview.
+# Use the helm chart for a real installation.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -16,7 +32,7 @@ spec:
     spec:
       priorityClassName: "system-node-critical"
       containers:
-      - image: ghcr.io/githedgehog/tpm-device-plugin:latest
+      - image: ghcr.io/githedgehog/k8s-tpm-device-plugin:latest
         imagePullPolicy: Always
         name: tpm-device-plugin
         securityContext:
