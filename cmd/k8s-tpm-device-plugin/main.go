@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"syscall"
 
@@ -143,7 +144,7 @@ func run(cliCtx *cli.Context, l *zap.Logger) error {
 	// print the version information
 	l.Info("Starting k8s-tpm-device-plugin", zap.String("version", version.Version), zap.String("go", runtime.Version()))
 
-	// some of this code has been borrowed by the NVIDIA plugin: https://github.com/NVIDIA/k8s-device-plugin
+	// some of this code has been borrowed from the NVIDIA plugin: https://github.com/NVIDIA/k8s-device-plugin
 	// watch the kubelet for restarts, we do this like other plugins by looking for the kubelet socket to be recreated
 	// this means that we will have to restart our plugin.
 	// NOTE: the restart is necessary as we need to register with the kubelet every time
@@ -151,7 +152,10 @@ func run(cliCtx *cli.Context, l *zap.Logger) error {
 	if err != nil {
 		return fmt.Errorf("fsnotify: initializing watcher: %w", err)
 	}
-	if err := fsw.Add(pluginapi.KubeletSocket); err != nil {
+	defer fsw.Close()
+	// unfortunately we need to watch the whole directory where the kubelet socket resides
+	// otherwise we will not be able to capture a "create" event for the kubelet socket with inotify (used in the fsnotify package)
+	if err := fsw.Add(filepath.Dir(pluginapi.KubeletSocket)); err != nil {
 		return fmt.Errorf("fsnotify: failed to add %s to files we need to watch: %w", pluginapi.KubeletSocket, err)
 	}
 
@@ -173,6 +177,7 @@ runLoop:
 		// now watch for events and react to them
 		select {
 		case event := <-fsw.Events:
+			l.Debug("fsnotify event", zap.Reflect("event", event))
 			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
 				l.Info("fsnotifiy: kubelet socket created, restarting...", zap.String("kubeletSocket", pluginapi.KubeletSocket))
 				if err := restart(ctx, p); err != nil {
@@ -206,11 +211,11 @@ runLoop:
 }
 
 func restart(ctx context.Context, p plugin.Interface) error {
-	if err := p.Start(ctx); err != nil {
-		return fmt.Errorf("TPM Device plugin failed to start on restart: %w", err)
-	}
 	if err := p.Stop(ctx); err != nil {
 		return fmt.Errorf("failed to stop TPM device plugin on restart: %w", err)
+	}
+	if err := p.Start(ctx); err != nil {
+		return fmt.Errorf("TPM Device plugin failed to start on restart: %w", err)
 	}
 	return nil
 }
