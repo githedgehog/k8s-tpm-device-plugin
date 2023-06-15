@@ -1,7 +1,9 @@
 # k8s-tpm-device-plugin
 
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202-blue)](https://www.apache.org/licenses/LICENSE-2.0)
+
 This is a Kubernetes device plugin to make TPM devices accessible from Kubernetes pods without the need to run pods in privileged mode.
-The initial goal for this plugin was to enable the [rust keylime agent](https://github.com/keylime/rust-keylime/) to run on Kubernetes.
+The initial goal for this plugin was to enable the [rust keylime agent](https://github.com/keylime/rust-keylime/) to run on Kubernetes (without the need of privileged mode).
 
 ## Overview
 
@@ -16,6 +18,19 @@ Up to _N_ pods on a host can gain access to the `/dev/tpmrm0` device.
 This value is configurable and can be overwritten at installation time with for example an additional command-line flag while installing the helm chart: `--set pluginSettings.numTpmRmDevices=128`.
 By default up to 64 pods can gain access to the `/dev/tpmrm0` device on a host.
 Note that this number is totally arbitrary, and can unfortunately not be handled differently because of the way how devices are allocated by the Kubernetes device manager.
+
+## Requirements
+
+The following requirements must be met to run the TPM device plugin:
+
+- obviously, it only makes sense to run this device plugin on nodes which offer a TPM device (duh) - use a custom `nodeSelector` for the `DaemonSet` if you need to be selective
+- Kubernetes 1.26 is a requirement at this point because this is when the device manager went GA - I'm afraid that if you have device plugins deployed as a feature before and you want to use this plugin, you need to modify the helm chart in this repo to remove this requirement.
+
+## Known Compatibility
+
+So far the plugin has only been tested on vanilla Kubernetes clusters running on Fedora nodes.
+It would be great to get confirmation contributions from folks who were successfully using this on some of the common cloud platforms.
+Please open an issue and/or PR for it!
 
 ## Installation
 
@@ -39,7 +54,7 @@ This is the preferred methodYou can request the `/dev/tpmrm0` device like the fo
         githedgehog.com/tpmrm: 1
 ```
 
-In edge cases, and when you truly need it, you can similarly request the `/dev/tpm0` device like this (_NOTE: not implemented yet!_):
+In edge cases, and when you truly need it, you can similarly request the `/dev/tpm0` device like this:
 
 ```yaml
     resources:

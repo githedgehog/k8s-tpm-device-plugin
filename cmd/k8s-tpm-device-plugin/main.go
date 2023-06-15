@@ -26,6 +26,7 @@ import (
 	"syscall"
 
 	"go.githedgehog.com/k8s-tpm-device-plugin/internal/plugin"
+	"go.githedgehog.com/k8s-tpm-device-plugin/internal/plugin/tpm"
 	"go.githedgehog.com/k8s-tpm-device-plugin/internal/plugin/tpmrm"
 	"go.githedgehog.com/k8s-tpm-device-plugin/pkg/version"
 
@@ -163,13 +164,20 @@ func run(cliCtx *cli.Context, l *zap.Logger) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	p, err := tpmrm.New(l, cliCtx.Uint("num-tpmrm-devices"), cliCtx.Bool("pass-tpm2tools-tcti-env-var"))
+	p1, err := tpmrm.New(l, cliCtx.Uint("num-tpmrm-devices"), cliCtx.Bool("pass-tpm2tools-tcti-env-var"))
 	if err != nil {
-		return fmt.Errorf("TPM Device plugin create: %w", err)
+		return fmt.Errorf("tpmrm: device plugin create: %w", err)
+	}
+	p2, err := tpm.New(l, cliCtx.Bool("pass-tpm2tools-tcti-env-var"))
+	if err != nil {
+		return fmt.Errorf("tpm: device plugin create: %w", err)
 	}
 	// start plugin
-	if err := p.Start(ctx); err != nil {
-		return fmt.Errorf("TPM Device plugin failed to start on startup: %w", err)
+	if err := p1.Start(ctx); err != nil {
+		return fmt.Errorf("%s: device plugin failed to start on startup: %w", p1.Name(), err)
+	}
+	if err := p2.Start(ctx); err != nil {
+		return fmt.Errorf("%s: device plugin failed to start on startup: %w", p2.Name(), err)
 	}
 
 runLoop:
@@ -180,7 +188,7 @@ runLoop:
 			l.Debug("fsnotify event", zap.Reflect("event", event))
 			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
 				l.Info("fsnotifiy: kubelet socket created, restarting...", zap.String("kubeletSocket", pluginapi.KubeletSocket))
-				if err := restart(ctx, p); err != nil {
+				if err := restart(ctx, p1, p2); err != nil {
 					return err
 				}
 			}
@@ -192,7 +200,7 @@ runLoop:
 			switch s {
 			case syscall.SIGHUP:
 				l.Info("SIGHUP signal received, restarting...")
-				if err := restart(ctx, p); err != nil {
+				if err := restart(ctx, p1, p2); err != nil {
 					return err
 				}
 			default:
@@ -203,19 +211,28 @@ runLoop:
 	}
 
 	// stop plugin on regular shutdown
-	if err := p.Stop(ctx); err != nil {
-		return fmt.Errorf("failed to stop TPM device plugin on shutdown: %w", err)
+	if err := p1.Stop(ctx); err != nil {
+		return fmt.Errorf("%s: failed to stop device plugin on shutdown: %w", p1.Name(), err)
+	}
+	if err := p2.Stop(ctx); err != nil {
+		return fmt.Errorf("%s: failed to stop device plugin on shutdown: %w", p2.Name(), err)
 	}
 
 	return nil
 }
 
-func restart(ctx context.Context, p plugin.Interface) error {
-	if err := p.Stop(ctx); err != nil {
-		return fmt.Errorf("failed to stop TPM device plugin on restart: %w", err)
+func restart(ctx context.Context, p1, p2 plugin.Interface) error {
+	if err := p1.Stop(ctx); err != nil {
+		return fmt.Errorf("%s: failed to stop device plugin on restart: %w", p1.Name(), err)
 	}
-	if err := p.Start(ctx); err != nil {
-		return fmt.Errorf("TPM Device plugin failed to start on restart: %w", err)
+	if err := p2.Stop(ctx); err != nil {
+		return fmt.Errorf("%s: failed to stop device plugin on restart: %w", p2.Name(), err)
+	}
+	if err := p1.Start(ctx); err != nil {
+		return fmt.Errorf("%s: Device plugin failed to start on restart: %w", p1.Name(), err)
+	}
+	if err := p2.Start(ctx); err != nil {
+		return fmt.Errorf("%s: Device plugin failed to start on restart: %w", p2.Name(), err)
 	}
 	return nil
 }

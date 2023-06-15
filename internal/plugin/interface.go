@@ -19,6 +19,7 @@ package plugin
 import "context"
 
 type Interface interface {
+	Name() string
 	Start(context.Context) error
 	Stop(context.Context) error
 }
